@@ -118,8 +118,6 @@
     <script>
         let isRecording = false;
         let countdownInterval;
-        let mediaRecorder;
-        let audioChunks = [];
 
         function startCountdown(seconds) {
             let countdownElement = document.getElementById("countdown");
@@ -131,21 +129,12 @@
 
                 if (seconds <= 0) {
                     clearInterval(countdownInterval);
-                    startRecording();
+                    startRecordingCountdown();
                 }
             }, 1000);
         }
 
-        async function startRecording() {
-            let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
-
-            mediaRecorder.start();
-            mediaRecorder.addEventListener("dataavailable", event => {
-                audioChunks.push(event.data);
-            });
-
+        function startRecordingCountdown() {
             let recordingTime = parseInt(document.getElementById("recording_time").value);
             let countdownElement = document.getElementById("countdown");
 
@@ -157,27 +146,9 @@
 
                 if (recordingTime <= 0) {
                     clearInterval(countdownInterval);
-                    mediaRecorder.stop();
                     countdownElement.innerHTML = "Processing...";
                 }
             }, 1000);
-
-            mediaRecorder.addEventListener("stop", () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                const audioFile = new File([audioBlob], 'audio.wav', { type: 'audio/wav' });
-                
-                const formData = new FormData();
-                formData.append('audio_data', audioFile);
-                formData.append('version_choice', document.getElementById("version_choice").value);
-                
-                fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                }).then(response => response.text())
-                  .then(result => {
-                      document.body.innerHTML = result;
-                  });
-            });
         }
 
         function handleSubmit(event) {
@@ -189,6 +160,9 @@
             document.getElementById("start-button").disabled = true;
             document.getElementById("stop-button").style.display = "block";
             startCountdown(3); // 3秒のカウントダウンを開始
+            setTimeout(() => {
+                document.getElementById("recording-form").submit();
+            }, 3000);
         }
 
         function handleStop() {
@@ -202,18 +176,19 @@
         }
 
         window.onload = function() {
-            // 合成音声のボリュームを20%に設定
-            let aiAudio = document.getElementById("ai-audio");
-            if (aiAudio) {
-                aiAudio.volume = 0.2;
-            }
+    　　　　　// 合成音声のボリュームを20%に設定
+    　　　　　let aiAudio = document.getElementById("ai-audio");
+    　　　　　if (aiAudio) {
+    　　　　　    aiAudio.volume = 0.2;
+    　　　　　}
 
-            // ユーザー音声のボリュームを100%に設定（デフォルトなので特に変更は不要ですが、明示的に設定）
-            let userAudio = document.getElementById("user-audio");
-            if (userAudio) {
-                userAudio.volume = 1.0;
-            }
-        };
+    　　　　　// ユーザー音声のボリュームを100%に設定（デフォルトなので特に変更は不要ですが、明示的に設定）
+    　　　　　let userAudio = document.getElementById("user-audio");
+    　　　　　if (userAudio) {
+    　　　　　    userAudio.volume = 1.0;
+    　　　　　}
+　　　　　};
+
     </script>
 </head>
 <body>
@@ -264,3 +239,5 @@
     </div>
 </body>
 </html>
+
+    
