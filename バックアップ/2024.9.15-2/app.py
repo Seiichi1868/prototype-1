@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request
 import speech_recognition as sr
 from gtts import gTTS
+import pyaudio
 import wave
 import os
 
