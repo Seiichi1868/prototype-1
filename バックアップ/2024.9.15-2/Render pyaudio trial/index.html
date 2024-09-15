@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Recognition App</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-image: url("static/background.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: rgba(60, 60, 60, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #ffffff;
+            font-size: 26px;
+            margin-bottom: 25px;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+            color: #dddddd;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid #444444;
+            font-size: 16px;
+            background-color: #444444;
+            color: #dddddd;
+        }
+
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #00509e;
+        }
+
+        .result {
+            margin-top: 25px;
+            text-align: left;
+        }
+
+        .result h2 {
+            color: #0066cc;
+            font-size: 22px;
+            margin-bottom: 15px;
+        }
+
+        .result p {
+            margin: 8px 0;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .error {
+            color: #ff4c4c;
+            font-weight: bold;
+            margin-top: 25px;
+        }
+
+        #countdown {
+            font-size: 20px;
+            margin-top: 15px;
+        }
+
+        #stop-button {
+            background-color: #cc0000;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.3s ease;
+            display: none;
+        }
+
+        #stop-button:hover {
+            background-color: #990000;
+        }
+    </style>
+    <script>
+        let isRecording = false;
+        let countdownInterval;
+
+        function startCountdown(seconds) {
+            let countdownElement = document.getElementById("countdown");
+            countdownElement.innerHTML = `Starting in ${seconds}...`;
+
+            countdownInterval = setInterval(() => {
+                seconds--;
+                countdownElement.innerHTML = `Starting in ${seconds}...`;
+
+                if (seconds <= 0) {
+                    clearInterval(countdownInterval);
+                    startRecordingCountdown();
+                }
+            }, 1000);
+        }
+
+        function startRecordingCountdown() {
+            let recordingTime = parseInt(document.getElementById("recording_time").value);
+            let countdownElement = document.getElementById("countdown");
+
+            countdownElement.innerHTML = `Recording... ${recordingTime} seconds remaining.`;
+
+            countdownInterval = setInterval(() => {
+                recordingTime--;
+                countdownElement.innerHTML = `Recording... ${recordingTime} seconds remaining.`;
+
+                if (recordingTime <= 0) {
+                    clearInterval(countdownInterval);
+                    countdownElement.innerHTML = "Processing...";
+                }
+            }, 1000);
+        }
+
+        function handleSubmit(event) {
+            event.preventDefault();
+            if (isRecording) {
+                return; // 既に録音中の場合は何もしない
+            }
+            isRecording = true;
+            document.getElementById("start-button").disabled = true;
+            document.getElementById("stop-button").style.display = "block";
+            startCountdown(3); // 3秒のカウントダウンを開始
+            setTimeout(() => {
+                document.getElementById("recording-form").submit();
+            }, 3000);
+        }
+
+        function handleStop() {
+            isRecording = false;
+            clearInterval(countdownInterval);
+            document.getElementById("start-button").disabled = false;
+            document.getElementById("stop-button").style.display = "none";
+            document.getElementById("countdown").innerHTML = "";
+            // リセットのためにページをリロード
+            location.reload();
+        }
+
+        window.onload = function() {
+    　　　　　// 合成音声のボリュームを20%に設定
+    　　　　　let aiAudio = document.getElementById("ai-audio");
+    　　　　　if (aiAudio) {
+    　　　　　    aiAudio.volume = 0.2;
+    　　　　　}
+
+    　　　　　// ユーザー音声のボリュームを100%に設定（デフォルトなので特に変更は不要ですが、明示的に設定）
+    　　　　　let userAudio = document.getElementById("user-audio");
+    　　　　　if (userAudio) {
+    　　　　　    userAudio.volume = 1.0;
+    　　　　　}
+　　　　　};
+
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech Recognition App</h1>
+        <form id="recording-form" method="POST" action="{{ url_for('process') }}">
+            <label for="version_choice">Choose an option:</label>
+            <select name="version_choice" id="version_choice">
+                <option value="1">Convert text to speech</option>
+                <option value="2">Play recorded audio</option>
+            </select>
+
+            <label for="recording_time">Choose recording time:</label>
+            <select name="recording_time" id="recording_time">
+                <option value="15">15 seconds</option>
+                <option value="30">30 seconds</option>
+                <option value="45">45 seconds</option>
+                <option value="60">1 minute</option>
+                <option value="120">2 minutes</option>
+                <option value="180">3 minutes</option>
+            </select>
+
+            <button id="start-button" type="button" onclick="handleSubmit(event)">Start Recording</button>
+            <button id="stop-button" type="button" onclick="handleStop()">Stop</button>
+        </form>
+
+        <div id="countdown"></div>
+
+        {% if text %}
+        <div class="result">
+            <h2>Result</h2>
+            <p><strong>You said:</strong> {{ text }}</p>
+            <p><strong>Word count:</strong> {{ word_count }}</p>
+            <audio controls id="user-audio">
+                <source src="{{ original_audio_path }}" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+            <audio controls id="ai-audio">
+                <source src="{{ audio_path }}" type="audio/mp3">
+                Your browser does not support the audio element.
+            </audio>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <p class="error">{{ error }}</p>
+        {% endif %}
+    </div>
+</body>
+</html>
+
+    
