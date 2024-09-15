@@ -1,50 +1,9 @@
 from flask import Flask, render_template, request
 import speech_recognition as sr
 from gtts import gTTS
-import wave
 import os
 
 app = Flask(__name__)
-
-# 録音設定
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 44100
-CHUNK = 1024
-WAVE_OUTPUT_FILENAME = os.path.join("static", "recorded_audio.wav")
-
-def record_audio(record_seconds):
-    audio = pyaudio.PyAudio()
-
-    # 録音開始
-    stream = audio.open(format=FORMAT, channels=CHANNELS,
-                        rate=RATE, input=True,
-                        frames_per_buffer=CHUNK)
-
-    print("Recording...")
-    frames = []
-
-    for _ in range(0, int(RATE / CHUNK * record_seconds)):
-        try:
-            data = stream.read(CHUNK, exception_on_overflow=False)
-            frames.append(data)
-        except IOError as e:
-            print(f"Error while recording: {e}")
-            break
-
-    print("Finished recording.")
-
-    # ストリームを停止
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
-
-    # 録音データをファイルに保存
-    with wave.open(WAVE_OUTPUT_FILENAME, 'wb') as wf:
-        wf.setnchannels(CHANNELS)
-        wf.setsampwidth(audio.get_sample_size(FORMAT))
-        wf.setframerate(RATE)
-        wf.writeframes(b''.join(frames))
 
 def format_text_for_speech(text):
     # 文末を検出してポーズを追加する
@@ -59,13 +18,12 @@ def index():
 @app.route('/process', methods=['POST'])
 def process():
     version_choice = request.form['version_choice']
-    record_seconds = int(request.form['recording_time'])  # フォームから選択された録音時間を取得
     recognizer = sr.Recognizer()
 
-    # 選択された秒数で録音を行う
-    record_audio(record_seconds)
+    # 音声ファイルを受け取る部分を追加するなど、録音部分の代替方法を検討してください。
 
-    # 録音したファイルを音声認識にかける
+    # 録音したファイルを音声認識にかける（Herokuでは事前に録音した音声ファイルを使う想定）
+    WAVE_OUTPUT_FILENAME = os.path.join("static", "recorded_audio.wav")
     with sr.AudioFile(WAVE_OUTPUT_FILENAME) as source:
         audio = recognizer.record(source)  # 音声ファイル全体を処理
 
