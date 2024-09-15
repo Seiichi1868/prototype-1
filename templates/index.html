@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>Speech Recognition App</h1>
-        <form id="recording-form" method="POST" action="{{ url_for('process') }}">
+        <form id="recording-form" method="POST" action="{{ url_for('upload_audio') }}">
             <label for="version_choice">Choose an option:</label>
             <select name="version_choice" id="version_choice">
                 <option value="1">Convert text to speech</option>
