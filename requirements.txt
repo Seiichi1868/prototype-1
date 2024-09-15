@@ -3,6 +3,8 @@ certifi==2024.7.4
 charset-normalizer==3.3.2
 click==8.1.7
 Flask==3.0.3
+gevent==24.2.1
+greenlet==3.1.0
 gTTS==2.5.3
 gunicorn==23.0.0
 idna==3.8
@@ -16,3 +18,5 @@ SpeechRecognition==3.10.4
 typing_extensions==4.12.2
 urllib3==2.2.2
 Werkzeug==3.0.4
+zope.event==5.0
+zope.interface==7.0.3
