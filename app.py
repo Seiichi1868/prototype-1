@@ -29,10 +29,10 @@ def upload_audio():
     recognizer = sr.Recognizer()
 
     # 音声ファイルを音声認識にかける
-    with sr.AudioFile(WAVE_OUTPUT_FILENAME) as source:
-        audio = recognizer.record(source)  # 音声ファイル全体を処理
-
     try:
+        with sr.AudioFile(WAVE_OUTPUT_FILENAME) as source:
+            audio = recognizer.record(source)  # 音声ファイル全体を処理
+
         text = recognizer.recognize_google(audio, language="en-US")
         if not text:
             return render_template('index.html', error="Sorry, the recording was too short. Please try again.")
