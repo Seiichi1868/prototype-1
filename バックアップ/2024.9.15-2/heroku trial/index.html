@@ -118,6 +118,8 @@
     <script>
         let isRecording = false;
         let countdownInterval;
+        let mediaRecorder;
+        let audioChunks = [];
 
         function startCountdown(seconds) {
             let countdownElement = document.getElementById("countdown");
@@ -129,12 +131,21 @@
 
                 if (seconds <= 0) {
                     clearInterval(countdownInterval);
-                    startRecordingCountdown();
+                    startRecording();
                 }
             }, 1000);
         }
 
-        function startRecordingCountdown() {
+        async function startRecording() {
+            let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.start();
+            mediaRecorder.addEventListener("dataavailable", event => {
+                audioChunks.push(event.data);
+            });
+
             let recordingTime = parseInt(document.getElementById("recording_time").value);
             let countdownElement = document.getElementById("countdown");
 
@@ -146,9 +157,89 @@
 
                 if (recordingTime <= 0) {
                     clearInterval(countdownInterval);
+                    mediaRecorder.stop();
                     countdownElement.innerHTML = "Processing...";
                 }
             }, 1000);
+
+            mediaRecorder.addEventListener("stop", () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                audioBlob.arrayBuffer().then(arrayBuffer => {
+                    audioContext.decodeAudioData(arrayBuffer, (audioBuffer) => {
+                        const wavBuffer = audioBufferToWav(audioBuffer); // WAV形式に変換
+                        const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+                        const audioFile = new File([wavBlob], 'audio.wav', { type: 'audio/wav' });
+                        
+                        const formData = new FormData();
+                        formData.append('audio_data', audioFile);
+                        formData.append('version_choice', document.getElementById("version_choice").value);
+                        
+                        fetch('/upload', {
+                            method: 'POST',
+                            body: formData
+                        }).then(response => response.text())
+                          .then(result => {
+                              document.body.innerHTML = result;
+                          });
+                    });
+                });
+            });
+        }
+
+        function audioBufferToWav(buffer) {
+            let numOfChan = buffer.numberOfChannels,
+                length = buffer.length * numOfChan * 2 + 44,
+                bufferIndex = 0,
+                result = new ArrayBuffer(length),
+                view = new DataView(result),
+                channels = [], i, sample,
+                offset = 44,
+                pos = 0;
+
+            // write WAVE header
+            setUint32(0x46464952);                         // "RIFF"
+            setUint32(length - 8);                         // file length - 8
+            setUint32(0x45564157);                         // "WAVE"
+
+            setUint32(0x20746d66);                         // "fmt " chunk
+            setUint32(16);                                 // length = 16
+            setUint16(1);                                  // PCM (uncompressed)
+            setUint16(numOfChan);
+            setUint32(buffer.sampleRate);
+            setUint32(buffer.sampleRate * 2 * numOfChan);  // avg. bytes/sec
+            setUint16(numOfChan * 2);                      // block-align
+            setUint16(16);                                 // 16-bit (hardcoded in this demo)
+
+            setUint32(0x61746164);                         // "data" - chunk
+            setUint32(length - pos - 4);                   // chunk length
+
+            // write interleaved data
+            for (i = 0; i < buffer.numberOfChannels; i++)
+                channels.push(buffer.getChannelData(i));
+
+            while (pos < length) {
+                for (i = 0; i < numOfChan; i++) {           // interleave channels
+                    sample = Math.max(-1, Math.min(1, channels[i][bufferIndex])); // clamp
+                    sample = (sample < 0 ? sample * 32768 : sample * 32767)|0; // scale to 16-bit signed int
+                    view.setInt16(offset, sample, true);          // write 16-bit sample
+                    offset += 2;
+                }
+                bufferIndex++;                              // next source sample
+            }
+
+            return result;
+
+            function setUint16(data) {
+                view.setUint16(pos, data, true);
+                pos += 2;
+            }
+
+            function setUint32(data) {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            }
         }
 
         function handleSubmit(event) {
@@ -160,9 +251,6 @@
             document.getElementById("start-button").disabled = true;
             document.getElementById("stop-button").style.display = "block";
             startCountdown(3); // 3秒のカウントダウンを開始
-            setTimeout(() => {
-                document.getElementById("recording-form").submit();
-            }, 3000);
         }
 
         function handleStop() {
@@ -176,25 +264,24 @@
         }
 
         window.onload = function() {
-    　　　　　// 合成音声のボリュームを20%に設定
-    　　　　　let aiAudio = document.getElementById("ai-audio");
-    　　　　　if (aiAudio) {
-    　　　　　    aiAudio.volume = 0.2;
-    　　　　　}
+            // 合成音声のボリュームを20%に設定
+            let aiAudio = document.getElementById("ai-audio");
+            if (aiAudio) {
+                aiAudio.volume = 0.2;
+            }
 
-    　　　　　// ユーザー音声のボリュームを100%に設定（デフォルトなので特に変更は不要ですが、明示的に設定）
-    　　　　　let userAudio = document.getElementById("user-audio");
-    　　　　　if (userAudio) {
-    　　　　　    userAudio.volume = 1.0;
-    　　　　　}
-　　　　　};
-
+            // ユーザー音声のボリュームを100%に設定（デフォルトなので特に変更は不要ですが、明示的に設定）
+            let userAudio = document.getElementById("user-audio");
+            if (userAudio) {
+                userAudio.volume = 1.0;
+            }
+        };
     </script>
 </head>
 <body>
     <div class="container">
         <h1>Speech Recognition App</h1>
-        <form id="recording-form" method="POST" action="{{ url_for('process') }}">
+        <form id="recording-form" method="POST" action="{{ url_for('upload_audio') }}">
             <label for="version_choice">Choose an option:</label>
             <select name="version_choice" id="version_choice">
                 <option value="1">Convert text to speech</option>
@@ -239,5 +326,3 @@
     </div>
 </body>
 </html>
-
-    
