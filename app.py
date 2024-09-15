@@ -54,4 +54,6 @@ def process():
 if __name__ == "__main__":
     if not os.path.exists('static'):
         os.makedirs('static')
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))  # 環境変数からポート番号を取得
+    app.run(host='0.0.0.0', port=port, debug=False)  # デバッグモードをオフ
+
